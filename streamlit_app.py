@@ -15,18 +15,39 @@ def generate_floorplan(prompt):
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
 
-    # Very basic logic: place rectangles based on keywords
-    rooms = {
-        "exam": ("Exam Room", (50, 50, 200, 150)),
-        "waiting": ("Waiting Area", (250, 50, 500, 150)),
-        "office": ("Office", (50, 200, 200, 300)),
-        "lounge": ("Staff Lounge", (250, 200, 500, 300))
+    # Draw building outer boundary
+    margin = 20
+    building_box = (margin, margin, width - margin, height - margin)
+    draw.rectangle(building_box, outline="black", width=5)
+
+    # Define known room types and layout slots
+    room_templates = {
+        "exam": "Exam Room",
+        "waiting": "Waiting Area",
+        "office": "Office",
+        "lounge": "Staff Lounge"
     }
 
-    for keyword, (label, box) in rooms.items():
-        if keyword in prompt.lower():
-            draw.rectangle(box, outline="black", width=3)
-            draw.text((box[0]+10, box[1]+10), label, fill="black")
+    # Get room types from prompt
+    matched_rooms = [key for key in room_templates if key in prompt.lower()]
+
+    # Layout logic: simple grid inside the building
+    cols = 2
+    room_width = (width - 2 * margin) // cols
+    room_height = 100
+    x_start = margin
+    y_start = margin + 10
+
+    for i, key in enumerate(matched_rooms):
+        col = i % cols
+        row = i // cols
+        x0 = x_start + col * room_width
+        y0 = y_start + row * (room_height + 10)
+        x1 = x0 + room_width - 10
+        y1 = y0 + room_height
+
+        draw.rectangle((x0, y0, x1, y1), outline="blue", width=2)
+        draw.text((x0 + 10, y0 + 10), room_templates[key], fill="black")
 
     return image
 
