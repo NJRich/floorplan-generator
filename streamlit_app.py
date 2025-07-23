@@ -17,10 +17,9 @@ if st.button("Generate Floor Plan"):
         st.info("Generating floor plan based on your prompt...")
 
         # Placeholder response
-        # Later, connect this to OpenAI or a layout engine
         st.success("✅ Floor plan generated successfully!")
         st.image(
-            "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Architectural_Floorplan_example.png/640px-Architectural_Floorplan_example.png", 
+            "https://i.imgur.com/0r7kS4R.png", 
             caption="Sample floor plan (placeholder)", 
             use_container_width=True
         )
