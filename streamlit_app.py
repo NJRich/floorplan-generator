@@ -16,7 +16,7 @@ if st.button("Generate Floor Plan"):
         st.info("Generating floor plan based on your prompt...")
         st.success("✅ Floor plan generated successfully!")
         st.image(
-            "https://upload.wikimedia.org/wikipedia/commons/d/df/Shelton_Hotel_basement_floor_plan.png",
+            "https://raw.githubusercontent.com/streamlit/example-app-image-coordinates/main/resources/floor_plan.png",
             caption="Sample floor plan (placeholder)",
             use_container_width=True
         )
