@@ -41,5 +41,3 @@ if st.button("Generate Floor Plan"):
         st.image(image, caption="Auto-generated floor plan", use_container_width=True)
         st.markdown("**Prompt:** " + prompt)
 
-streamlit
-Pillow
