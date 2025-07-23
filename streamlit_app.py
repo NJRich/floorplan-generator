@@ -1,5 +1,3 @@
-streamlit
-Pillow
 import streamlit as st
 from PIL import Image, ImageDraw
 
@@ -42,3 +40,6 @@ if st.button("Generate Floor Plan"):
         st.success("✅ Floor plan generated!")
         st.image(image, caption="Auto-generated floor plan", use_container_width=True)
         st.markdown("**Prompt:** " + prompt)
+
+streamlit
+Pillow
