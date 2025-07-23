@@ -15,39 +15,45 @@ def generate_floorplan(prompt):
     image = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(image)
 
-    # Draw building outer boundary
-    margin = 20
-    building_box = (margin, margin, width - margin, height - margin)
-    draw.rectangle(building_box, outline="black", width=5)
+    # Draw the outer boundary
+    draw.rectangle([10, 10, width - 10, height - 10], outline="black", width=5)
 
-    # Define known room types and layout slots
+    # Room templates and estimated size
     room_templates = {
-        "exam": "Exam Room",
-        "waiting": "Waiting Area",
-        "office": "Office",
-        "lounge": "Staff Lounge"
+        "exam": ("Exam Room", (150, 100)),
+        "waiting": ("Waiting Area", (200, 100)),
+        "office": ("Office", (150, 100)),
+        "lounge": ("Staff Lounge", (200, 100))
     }
 
-    # Get room types from prompt
-    matched_rooms = [key for key in room_templates if key in prompt.lower()]
+    # Count room types in prompt
+    prompt_lower = prompt.lower()
+    room_counts = {}
+    for key in room_templates:
+        count = 1  # default
+        if f"2 {key}" in prompt_lower:
+            count = 2
+        elif f"3 {key}" in prompt_lower:
+            count = 3
+        elif f"{key}s" in prompt_lower:
+            count = 2
+        room_counts[key] = count if key in prompt_lower else 0
 
-    # Layout logic: simple grid inside the building
-    cols = 2
-    room_width = (width - 2 * margin) // cols
-    room_height = 100
-    x_start = margin
-    y_start = margin + 10
+    # Draw rooms
+    margin_x, margin_y = 20, 20
+    offset_x, offset_y = 30, 30
+    curr_x, curr_y = margin_x, margin_y
 
-    for i, key in enumerate(matched_rooms):
-        col = i % cols
-        row = i // cols
-        x0 = x_start + col * room_width
-        y0 = y_start + row * (room_height + 10)
-        x1 = x0 + room_width - 10
-        y1 = y0 + room_height
-
-        draw.rectangle((x0, y0, x1, y1), outline="blue", width=2)
-        draw.text((x0 + 10, y0 + 10), room_templates[key], fill="black")
+    for key, count in room_counts.items():
+        label, (rw, rh) = room_templates[key]
+        for i in range(count):
+            box = [curr_x, curr_y, curr_x + rw, curr_y + rh]
+            draw.rectangle(box, outline="blue", width=3)
+            draw.text((curr_x + 5, curr_y + 5), f"{label} {i+1}", fill="black")
+            curr_x += rw + offset_x
+            if curr_x + rw > width - margin_x:
+                curr_x = margin_x
+                curr_y += rh + offset_y
 
     return image
 
