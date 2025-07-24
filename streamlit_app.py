@@ -1,19 +1,20 @@
 import streamlit as st
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import math, re, random
 
-# Streamlit UI setup
+# Page setup
 st.set_page_config(page_title="AI Floor Plan Generator", layout="centered")
 st.title("🧠 AI Floor Plan Generator")
 st.write("Describe your space and we'll generate a basic floor plan layout.")
 
-prompt = st.text_area("✍️ Describe your space:", placeholder="e.g. A clinic with 2 exam rooms and a waiting area")
+# Input prompt
+prompt = st.text_area("🍋 Describe your space:", placeholder="e.g. a clinic with 2 exam rooms and a waiting area")
 
-# Floor plan generation logic
+# ----------- Function to generate layout ------------
 def generate_floorplan_layout(prompt: str):
     scale = 10  # 1 foot = 10 pixels
-    wall_thickness = 0.5  # feet (6 inches)
-    corridor_width = 6.0  # feet
+    wall_thickness = 0.5
+    corridor_width = 6.0
 
     default_room_sizes = {
         "exam room":  (10.0, 13.0),
@@ -28,8 +29,8 @@ def generate_floorplan_layout(prompt: str):
     default_room_sizes.update({
         "exam rooms": default_room_sizes["exam room"],
         "waiting room": default_room_sizes["waiting area"],
-        "offices":    default_room_sizes["office"],
-        "cafes":      default_room_sizes["cafe"]
+        "offices": default_room_sizes["office"],
+        "cafes": default_room_sizes["cafe"]
     })
 
     prompt_text = prompt.lower().replace(" and ", ", ")
@@ -41,7 +42,8 @@ def generate_floorplan_layout(prompt: str):
     }
     for part in parts:
         tokens = part.split()
-        if not tokens: continue
+        if not tokens:
+            continue
         count = 1
         if tokens[0] in num_words:
             count = num_words[tokens[0]]
@@ -60,131 +62,69 @@ def generate_floorplan_layout(prompt: str):
             for i in range(count):
                 label = f"{room_type.title()} {i+1}" if count > 1 else room_type.title()
                 room_list.append((label, width_ft, depth_ft))
+
     if not room_list:
         return None
 
-    # Orientation helpers
-    def partition_vertical(rooms):
+    def partition_rooms(rooms):
         left, right = [], []
-        left_len = right_len = 0.0
-        left_max = right_max = 0.0
-        for r in sorted(rooms, key=lambda x: x[1], reverse=True):
-            if left_len <= right_len:
-                left.append(r); left_len += r[1]; left_max = max(left_max, r[2])
+        l_len = r_len = 0.0
+        for r in rooms:
+            if l_len <= r_len:
+                left.append(r); l_len += r[1]
             else:
-                right.append(r); right_len += r[1]; right_max = max(right_max, r[2])
-        return left, right, max(left_len, right_len), left_max, right_max
+                right.append(r); r_len += r[1]
+        return left, right, max(l_len, r_len)
 
-    def partition_horizontal(rooms):
-        top, bot = [], []
-        top_len = bot_len = 0.0
-        top_max = bot_max = 0.0
-        for r in sorted(rooms, key=lambda x: x[1], reverse=True):
-            if top_len <= bot_len:
-                top.append(r); top_len += r[1]; top_max = max(top_max, r[2])
-            else:
-                bot.append(r); bot_len += r[1]; bot_max = max(bot_max, r[2])
-        return top, bot, max(top_len, bot_len), top_max, bot_max
+    left, right, corridor_len = partition_rooms(room_list)
+    left_depth = max((r[2] for r in left), default=0.0)
+    right_depth = max((r[2] for r in right), default=0.0)
 
-    lft, rgt, vlen, ld, rd = partition_vertical(room_list)
-    top, bot, hlen, td, bd = partition_horizontal(room_list)
+    w = (left_depth + corridor_width + right_depth + 2 * wall_thickness) * scale
+    h = (corridor_len + 2 * wall_thickness) * scale
+    margin = 20
+    img = Image.new("RGB", (int(w + 2 * margin), int(h + 2 * margin)), "white")
+    draw = ImageDraw.Draw(img)
+    offset_x = margin + int(wall_thickness * scale)
+    offset_y = margin + int(wall_thickness * scale)
+    
+    # Corridor (gray)
+    cx = offset_x + int(left_depth * scale)
+    draw.rectangle([
+        (cx, offset_y),
+        (cx + int(corridor_width * scale), offset_y + int(corridor_len * scale))
+    ], fill=(200, 200, 200))
 
-    v_area = (ld + corridor_width + rd) * vlen
-    h_area = hlen * (td + corridor_width + bd)
-
-    vertical = v_area <= h_area
-    group1, group2 = (lft, rgt) if vertical else (top, bot)
-    depth1, depth2 = (ld, rd) if vertical else (td, bd)
-    entrance_side = random.choice(["N", "S"] if vertical else ["E", "W"])
-    layout_len = vlen if vertical else hlen
-
-    int_width = (depth1 + corridor_width + depth2) if vertical else layout_len
-    int_height = layout_len if vertical else (depth1 + corridor_width + depth2)
-
-    margin_px = 20
-    img_width = int((int_width + 2 * wall_thickness) * scale) + 2 * margin_px
-    img_height = int((int_height + 2 * wall_thickness) * scale) + 2 * margin_px
-    image = Image.new('RGB', (img_width, img_height), color="white")
-    draw = ImageDraw.Draw(image)
+    # Draw rooms with wall between them
     wall_px = int(wall_thickness * scale)
-    ox = margin_px + int(wall_thickness * scale)
-    oy = margin_px + int(wall_thickness * scale)
+    y_cursor = 0.0
+    for name, w_ft, d_ft in left:
+        x1 = offset_x
+        x2 = offset_x + int(d_ft * scale)
+        y1 = offset_y + int(y_cursor * scale)
+        y2 = y1 + int(w_ft * scale)
+        draw.rectangle([x1, y1, x2, y2], fill=(200, 240, 255), outline="black", width=wall_px)
+        draw.text((x1 + 5, y1 + 5), name, fill="black")
+        y_cursor += w_ft
+        draw.line([x1, y2, x2, y2], fill="black", width=wall_px)  # bottom wall
 
-    # Draw corridor
-    if vertical:
-        cx1 = ox + int(depth1 * scale)
-        cx2 = cx1 + int(corridor_width * scale)
-        cy1, cy2 = oy, oy + int(layout_len * scale)
-    else:
-        cy1 = oy + int(depth1 * scale)
-        cy2 = cy1 + int(corridor_width * scale)
-        cx1, cx2 = ox, ox + int(layout_len * scale)
-    draw.rectangle([cx1, cy1, cx2, cy2], fill=(200, 200, 200))
+    y_cursor = 0.0
+    for name, w_ft, d_ft in right:
+        x1 = offset_x + int((left_depth + corridor_width) * scale)
+        x2 = x1 + int(d_ft * scale)
+        y1 = offset_y + int(y_cursor * scale)
+        y2 = y1 + int(w_ft * scale)
+        draw.rectangle([x1, y1, x2, y2], fill=(230, 230, 230), outline="black", width=wall_px)
+        draw.text((x1 + 5, y1 + 5), name, fill="black")
+        y_cursor += w_ft
+        draw.line([x1, y2, x2, y2], fill="black", width=wall_px)
 
-    # Draw rooms
-    if vertical:
-        y = 0.0
-        for name, w, h in group1:
-            x1 = ox
-            x2 = x1 + int(h * scale)
-            y1 = oy + int(y * scale)
-            y2 = y1 + int(w * scale)
-            draw.rectangle([x1, y1, x2, y2], fill=(220, 245, 255), outline="black", width=wall_px)
-            draw.text((x1+4, y1+4), name, fill="black")
-            y += w
-        y = 0.0
-        for name, w, h in group2:
-            x1 = ox + int((depth1 + corridor_width) * scale)
-            x2 = x1 + int(h * scale)
-            y1 = oy + int(y * scale)
-            y2 = y1 + int(w * scale)
-            draw.rectangle([x1, y1, x2, y2], fill=(220, 245, 255), outline="black", width=wall_px)
-            draw.text((x1+4, y1+4), name, fill="black")
-            y += w
-    else:
-        x = 0.0
-        for name, w, h in group1:
-            x1 = ox + int(x * scale)
-            x2 = x1 + int(w * scale)
-            y1 = oy
-            y2 = y1 + int(h * scale)
-            draw.rectangle([x1, y1, x2, y2], fill=(220, 245, 255), outline="black", width=wall_px)
-            draw.text((x1+4, y1+4), name, fill="black")
-            x += w
-        x = 0.0
-        for name, w, h in group2:
-            x1 = ox + int(x * scale)
-            x2 = x1 + int(w * scale)
-            y1 = oy + int((depth1 + corridor_width) * scale)
-            y2 = y1 + int(h * scale)
-            draw.rectangle([x1, y1, x2, y2], fill=(220, 245, 255), outline="black", width=wall_px)
-            draw.text((x1+4, y1+4), name, fill="black")
-            x += w
+    # Outer walls
+    img_w, img_h = img.size
+    draw.rectangle([margin, margin, img_w - margin, img_h - margin], outline="black", width=wall_px)
+    return img
 
-    # Draw outer walls (solid black with door opening)
-    right = ox + int(int_width * scale)
-    bottom = oy + int(int_height * scale)
-
-    def draw_wall_with_door(x1, y1, x2, y2, skip=False):
-        if skip:
-            gap_len = int((corridor_width if vertical else layout_len) * scale)
-            if x1 == x2:  # vertical line
-                draw.line([x1, y1, x1, y1 + (bottom - oy - gap_len) // 2], fill="black", width=wall_px)
-                draw.line([x1, y1 + (bottom - oy + gap_len) // 2, x1, bottom], fill="black", width=wall_px)
-            else:  # horizontal
-                draw.line([x1, y1, x1 + (right - ox - gap_len) // 2, y1], fill="black", width=wall_px)
-                draw.line([x1 + (right - ox + gap_len) // 2, y1, right, y1], fill="black", width=wall_px)
-        else:
-            draw.line([x1, y1, x2, y2], fill="black", width=wall_px)
-
-    draw_wall_with_door(ox, oy, right, oy, entrance_side == "N")
-    draw_wall_with_door(ox, bottom, right, bottom, entrance_side == "S")
-    draw_wall_with_door(ox, oy, ox, bottom, entrance_side == "W")
-    draw_wall_with_door(right, oy, right, bottom, entrance_side == "E")
-
-    return image
-
-# Streamlit output
+# -------------- Streamlit interaction ----------------
 if st.button("Generate Floor Plan"):
     if not prompt.strip():
         st.warning("Please enter a space description.")
@@ -194,6 +134,5 @@ if st.button("Generate Floor Plan"):
         if image:
             st.success("✅ Floor plan generated!")
             st.image(image, caption="Auto-generated floor plan", use_container_width=True)
-            st.markdown("**Prompt:** " + prompt)
         else:
-            st.error("❌ Could not detect room types from your prompt.")
+            st.error("Could not recognize any rooms. Try rephrasing your prompt.")
