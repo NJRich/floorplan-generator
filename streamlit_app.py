@@ -21,18 +21,26 @@ def generate_floorplan():
     default_room_sizes = {
         "exam room": (10.0, 13.0),
         "waiting area": (12.0, 12.0),
+        "cafe": (15.0, 15.0),
+        "lobby": (18.0, 18.0),
+        "staff open office": (20.0, 15.0),
+        "pantry": (10.0, 10.0)
     }
 
     # Sample room list: [(label, width_ft, depth_ft)]
     room_list = [
         ("Exam Room 1", *default_room_sizes["exam room"]),
         ("Exam Room 2", *default_room_sizes["exam room"]),
-        ("Waiting Area", *default_room_sizes["waiting area"])
+        ("Waiting Area", *default_room_sizes["waiting area"]),
+        ("Cafe", *default_room_sizes["cafe"]),
+        ("Lobby", *default_room_sizes["lobby"]),
+        ("Staff Open Office", *default_room_sizes["staff open office"]),
+        ("Pantry", *default_room_sizes["pantry"])
     ]
 
     # Layout: split into top and bottom rows
-    top_rooms = [room_list[0]]
-    bottom_rooms = [room_list[1], room_list[2]]
+    top_rooms = room_list[:3]
+    bottom_rooms = room_list[3:]
 
     top_depth = max(r[2] for r in top_rooms)
     bottom_depth = max(r[2] for r in bottom_rooms)
