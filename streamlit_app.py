@@ -259,7 +259,7 @@ def generate_floorplan_layout(prompt: str):
 
 # Generate button
 if st.button("Generate Floor Plan"):
- if not prompt.strip():
+     if not prompt.strip():
  st.warning("Please enter a space description.")
  else:
  st.info("Generating layout...")
